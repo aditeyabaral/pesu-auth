@@ -19,15 +19,6 @@ class PESUAcademy:
         self.chrome: Optional[webdriver.Chrome] = None
         self.chrome_options: Optional[webdriver.ChromeOptions] = None
 
-        self.branch_short_code_map: dict[str, str] = {
-            "Computer Science and Engineering": "CSE",
-            "Electronics and Communication Engineering": "ECE",
-            "Mechanical Engineering": "ME",
-            "Electrical and Electronics Engineering": "EEE",
-            "Civil Engineering": "CE",
-            "Biotechnology": "BT",
-        }
-
     def init_chrome(self, headless: bool = True):
         logging.info(f"Initializing Chrome with headless={headless}")
         self.chrome_options = webdriver.ChromeOptions()
@@ -60,7 +51,15 @@ class PESUAcademy:
         self.chrome.execute_cdp_cmd("Emulation.setTimezoneOverride", {"timezoneId": "Asia/Kolkata"})
 
     def map_branch_to_short_code(self, branch: str) -> Optional[str]:
-        return self.branch_short_code_map.get(branch)
+        branch_short_code_map = {
+            "Computer Science and Engineering": "CSE",
+            "Electronics and Communication Engineering": "ECE",
+            "Mechanical Engineering": "ME",
+            "Electrical and Electronics Engineering": "EEE",
+            "Civil Engineering": "CE",
+            "Biotechnology": "BT",
+        }
+        return branch_short_code_map.get(branch)
 
     def get_profile_information_from_selenium(self, username: Optional[str] = None) -> dict[str, Any]:
         try:
@@ -90,7 +89,7 @@ class PESUAcademy:
                         key = "prn" if key == "pesu_id" else key
                         profile[key] = value
 
-            # if username starts with PES1, then he is from RR campus, else if it is PES2, then EC campus
+            # if username starts with PES1, then student is from RR campus, else if it is PES2, then EC campus
             key = username if username else profile["pesu_id"]
             if campus_code_match := re.match(r"PES(\d)", key):
                 campus_code = campus_code_match.group(1)
