@@ -50,12 +50,13 @@ class PESUAcademy:
                 )
         self.chrome.execute_cdp_cmd("Emulation.setTimezoneOverride", {"timezoneId": "Asia/Kolkata"})
 
-    def map_branch_to_short_code(self, branch: str) -> Optional[str]:
+    @staticmethod
+    def map_branch_to_short_code(branch: str) -> Optional[str]:
         branch_short_code_map = {
             "Computer Science and Engineering": "CSE",
             "Electronics and Communication Engineering": "ECE",
-            "Mechanical Engineering": "ME",
             "Electrical and Electronics Engineering": "EEE",
+            "Mechanical Engineering": "ME",
             "Civil Engineering": "CE",
             "Biotechnology": "BT",
         }
