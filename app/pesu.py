@@ -75,7 +75,8 @@ class PESUAcademy:
         except Exception as e:
             logging.error(f"Unable to find the profile button: {traceback.format_exc()}")
             self.chrome.quit()
-            return {"status": False, "message": "Unable to find the profile button after login.", "error": str(e)}
+            return {"status": False, "message": "Unable to find the profile button after login.",
+                    "error": traceback.format_exc()}
 
         try:
             logging.info("Fetching profile data from page")
@@ -90,8 +91,11 @@ class PESUAcademy:
                         key = "prn" if key == "pesu_id" else key
                         profile[key] = value
 
+            profile["email"] = self.chrome.find_element(By.ID, "updateMail").get_attribute("value")
+            profile["phone"] = self.chrome.find_element(By.ID, "updateContact").get_attribute("value")
+
             # if username starts with PES1, then student is from RR campus, else if it is PES2, then EC campus
-            key = username if username else profile["pesu_id"]
+            key = username if username else profile["prn"]
             if campus_code_match := re.match(r"PES(\d)", key):
                 campus_code = campus_code_match.group(1)
                 profile["campus_code"] = int(campus_code)
@@ -103,7 +107,7 @@ class PESUAcademy:
         except Exception as e:
             logging.error(f"Unable to fetch profile data: {traceback.format_exc()}")
             self.chrome.quit()
-            return {"status": False, "message": "Unable to fetch profile data.", "error": str(e)}
+            return {"status": False, "message": "Unable to fetch profile data.", "error": traceback.format_exc()}
 
     def get_profile_information_from_requests(
             self,
@@ -128,7 +132,7 @@ class PESUAcademy:
 
         except Exception as e:
             logging.error(f"Unable to fetch profile data: {traceback.format_exc()}")
-            return {"status": False, "message": "Unable to fetch profile data.", "error": str(e)}
+            return {"status": False, "message": "Unable to fetch profile data.", "error": traceback.format_exc()}
 
         profile = dict()
         for element in soup.find_all("div", attrs={"class": "form-group"})[:7]:
@@ -148,8 +152,8 @@ class PESUAcademy:
         profile["email"] = soup.find("input", attrs={"id": "updateMail"}).get("value")
         profile["phone"] = soup.find("input", attrs={"id": "updateContact"}).get("value")
 
-        # if username starts with PES1, then he is from RR campus, else if it is PES2, then EC campus
-        key = username if username else profile["pesu_id"]
+        # if username starts with PES1, then student from RR campus, else if it is PES2, then EC campus
+        key = username if username else profile["prn"]
         if campus_code_match := re.match(r"PES(\d)", key):
             campus_code = campus_code_match.group(1)
             profile["campus_code"] = int(campus_code)
@@ -210,63 +214,7 @@ class PESUAcademy:
 
         return profile
 
-    def authenticate_selenium_non_interactive(
-            self,
-            username: str,
-            password: str,
-            profile: bool = False
-    ) -> dict[str, Any]:
-        logging.warning("This method is deprecated and will be removed in future versions.")
-
-        self.init_chrome()
-        try:
-            logging.info("Connecting to PESU Academy")
-            self.chrome.get("https://pesuacademy.com/Academy")
-            self.chrome.implicitly_wait(3)
-        except Exception as e:
-            logging.error(f"Unable to connect to PESU Academy: {traceback.format_exc()}")
-            self.chrome.quit()
-            return {"status": False, "message": "Unable to connect to PESU Academy.", "error": str(e)}
-
-        try:
-            logging.info("Logging in to PESU Academy")
-            self.chrome.find_element(By.ID, "j_scriptusername").send_keys(username)
-            self.chrome.find_element(By.NAME, "j_password").send_keys(password)
-            self.chrome.find_element(By.ID, "postloginform#/Academy/j_spring_security_check").click()
-            self.chrome.implicitly_wait(3)
-        except Exception as e:
-            logging.error(f"Unable to find the login form: {traceback.format_exc()}")
-            self.chrome.quit()
-            return {"status": False, "message": "Unable to find the login form.", "error": str(e)}
-
-        status = False
-        try:
-            logging.info(f"Checking if the login was successful")
-            if (element := self.chrome.find_element(By.CLASS_NAME, "login-msg")) \
-                    and element.text in ("Your Username and Password do not match", "User doesn't exist"):
-                # this element is shown only when the login is unsuccessful
-                logging.error("Login unsuccessful")
-                self.chrome.quit()
-                status = False
-                return {
-                    "status": status,
-                    "message": "Invalid username or password, or the user does not exist.",
-                }
-        except Exception:
-            # this element is not shown when the login is successful
-            status = True
-            logging.info("Login successful")
-
-        if profile:
-            result = self.get_profile_information_from_selenium(username)
-            know_your_class_and_section_data = self.get_know_your_class_and_section(username)
-            result["know_your_class_and_section"] = know_your_class_and_section_data
-            return result
-        else:
-            self.chrome.quit()
-            return {"status": status, "message": "Login successful."}
-
-    def authenticate_selenium_interactive(self, profile: bool = False) -> dict[str, Any]:
+    def authenticate_interactive(self, profile: bool = False) -> dict[str, Any]:
         self.init_chrome(headless=False)
 
         try:
@@ -278,7 +226,7 @@ class PESUAcademy:
         except Exception as e:
             logging.error(f"Unable to connect to PESU Academy: {traceback.format_exc()}")
             self.chrome.quit()
-            return {"status": False, "message": "Unable to connect to PESU Academy.", "error": str(e)}
+            return {"status": False, "message": "Unable to connect to PESU Academy.", "error": traceback.format_exc()}
 
         # wait for user to login manually
         try:
@@ -290,7 +238,7 @@ class PESUAcademy:
         except Exception as e:
             logging.error(f"Unable to find the login form: {traceback.format_exc()}")
             self.chrome.quit()
-            return {"status": False, "message": "Unable to find the login form.", "error": str(e)}
+            return {"status": False, "message": "Unable to find the login form.", "error": traceback.format_exc()}
 
         if profile:
             return self.get_profile_information_from_selenium()
@@ -310,7 +258,7 @@ class PESUAcademy:
         except Exception as e:
             logging.error(f"Unable to fetch csrf token: {traceback.format_exc()}")
             session.close()
-            return {"status": False, "message": "Unable to fetch csrf token.", "error": str(e)}
+            return {"status": False, "message": "Unable to fetch csrf token.", "error": traceback.format_exc()}
 
         # Prepare the login data for auth call
         data = {
@@ -326,7 +274,7 @@ class PESUAcademy:
         except Exception as e:
             logging.error(f"Unable to authenticate: {traceback.format_exc()}")
             session.close()
-            return {"status": False, "message": "Unable to authenticate.", "error": str(e)}
+            return {"status": False, "message": "Unable to authenticate.", "error": traceback.format_exc()}
 
         # if class login-form is present, login failed
         if soup.find("div", attrs={"class": "login-form"}):
